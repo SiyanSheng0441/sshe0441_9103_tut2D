@@ -12,11 +12,17 @@ As shown in the diagram, the five wheels labeled 1-5 are clickable and trigger a
 
 **Interaction Methods:**
 
-1. Click any numbered wheel to play its corresponding audio track
-2. Clicked wheels will **pulsate/scale** with the music rhythm
-3. All bead chains **vibrate** simultaneously with bass frequencies
-4. You can click multiple wheels to **layer audio tracks**
-5. Click the same wheel again to stop playback
+1. **Wheels 1, 2, and 4** toggle looping audio playback
+   - First click: start looping
+   - Second click: stop playback
+2. **Wheels 3 and 5** trigger one-shot sounds
+   - Play once per click
+   - Cannot be stopped mid-playback
+   - Multiple clicks layer sound
+3. Active wheels **pulsate/scale** with bass frequency (20-200Hz)
+4. All bead chains **vibrate** simultaneously with bass energy
+5. Multiple wheels can be triggered simultaneously to **layer audio tracks and animations**
+**Note**: Wheels 1, 2, 4 behave as looping pads; Wheels 3, 5 behave as one-shot percussion hits.
 
 The work automatically adapts to browser window resizing.
 
@@ -55,28 +61,54 @@ Using FFT spectrum analysis of audio frequencies to make visual elements change 
 **1. Five Central Wheels - Scale Animation**
 
 - **Trigger**: Clicking a wheel plays audio
-- **Effect**: Wheel "pulses" with bass frequency (20-200Hz) energy
+- **Effect**: Wheel "pulses" subtly with bass frequency (20-200Hz) energy
 - **Implementation**:
-  ```javascript
-  let bassEnergy = fft.getEnergy(20, 200);
-  let scaleAmount = map(bassEnergy, 200, 250, 0, 5);
-  let scaleFactor = 1 + scaleAmount / R;
-  scale(scaleFactor);
-  ```
+```javascript
+  // Inside Wheel.displayWheel() method
+  let _amp = fft.getEnergy(20, 200);
+  let scaleOffset = 0;
+  
+  if (this.options.aniType === "scale") {
+    let soundIndex = this.options.soundIndex;
+    if (sounds[soundIndex].isPlaying()) {
+      // Create subtle breathing motion
+      scaleOffset = map(_amp, 200, 250, -0.1, 0.1);
+      
+      // Wheel 4 uses adjusted range for its specific audio sample
+      if (sounds[3].isPlaying()) {
+        scaleOffset = map(_amp, 230, 240, -0.1, 0.1);
+      }
+    }
+  }
+  
+  // Apply base scale plus audio-driven offset
+  scale(this.r / 22 + scaleOffset);
+```
+  
+  **Explanation**: Each wheel has a base scale (`this.r / 22`). When playing audio, bass energy creates a subtle pulsing effect. Wheel 4 uses a tighter frequency range (230-240Hz instead of 200-250Hz) to prevent over-scaling due to its particular audio sample characteristics.
 
-**2. Outer Wheels - Rotation Animation**
+**2. All Bead Chains - Height Vibration**
 
 - **Trigger**: When any audio is playing
-- **Effect**: Outer non-interactive wheels continuously rotate
-- **Implementation**: Rotation speed adjusted by bass energy, enhancing overall rhythm
+- **Effect**: Beads "breathe" vertically, simulating sound wave propagation
+- **Implementation**: 
+```javascript
+  let _amp = fft.getEnergy(20, 200);
+  let offsetSize = map(_amp, 200, 250, 0, 5);
+  
+  // Special handling for sound track 4
+  if (sounds[3].isPlaying()) {
+    offsetSize = map(_amp, 230, 240, 0, 5);
+    offsetSize = constrain(offsetSize, -5, 5);
+  }
+  
+  // Applied to bead ellipse height
+  ellipse(0, 0, size, min(size / 2, 12) + offsetSize);
+```
+  
+  Bead height increases by 0-5 pixels based on bass energy, creating a synchronized vibration effect across all chains.
 
-**3. All Bead Chains - Height Vibration**
-
-- **Trigger**: When any audio is playing
-- **Effect**: Beads "breathe" vertically, like sound wave propagation
-- **Implementation**: Bead height increases by 0-5 pixel offset
-
-**Why use 20-200Hz**: This frequency range includes bass and kick drum rhythm elements. Visuals following this range create strong rhythmic feel and impact.
+**Why use 20-200Hz**: This frequency range captures bass and kick drum elements that drive musical rhythm. Visual responses to this range create strong rhythmic feel and visceral impact.
 
 ---
 
