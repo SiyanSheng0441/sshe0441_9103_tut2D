@@ -1,17 +1,20 @@
-const R = 115;
-const BEAD_W = 20;
-const CHAIN_GAP = 10;
-let wheels = [];
-let chains = [];
+const R = 115;  // Radius of each wheel circle
+const BEAD_W = 20;  // Width (diameter) of each bead in the chain
+const CHAIN_GAP = 10;  // Gap between wheel radius and chain start
+let wheels = [];  // Array to store Wheel objects
+let chains = [];  // Array to store bead-chain paths
 
-const BASE_CANVAS_SIZE = 800;
-let baseImg;
-let scaleFactor = 1;
-let offsetX = 0;
-let offsetY = 0;
+const BASE_CANVAS_SIZE = 800;  // Logical canvas size for layout
+let baseImg;  
+let scaleFactor = 1;  // Scale factor to adapt to window size
+let offsetX = 0;  // Horizontal offset for centering
+let offsetY = 0;  // Vertical offset for centering
 
+// All audio tracks
 let sounds = [];
+// Audio frequency analyser
 let fft;
+// Positions of the 5 central clickable wheels
 let buttonPos = [
   { x: 270, y: 286 },
   { x: 509, y: 216 },
@@ -19,8 +22,10 @@ let buttonPos = [
   { x: 448, y: 446 },
   { x: 687, y: 392 },
 ]
+// Flag whether animation has started
 let start = false;
 
+// Preload: load five audio tracks
 function preload() {
   sounds.push(loadSound('assets/Odyssey_Breakdown_Loop_1_-_128_BPM_F_Min.wav'));
   sounds.push(loadSound('assets/Odyssey_House_Drum_Loop_-_128_BPM.wav'));
@@ -30,11 +35,14 @@ function preload() {
 }
 
 function mousePressed() {
+  // Convert mouse position to the scaled canvas coordinates
   let pos = getMousePosition();
   for (let i = 0; i < buttonPos.length; i++) {
     let b = buttonPos[i];
+    // Check if click intersects a button
     if (dist(pos.x, pos.y, b.x, b.y) < R / scaleFactor) {
       let index = i + 1;
+      // Button 1 logic: toggle loop
       if (index == 1) {
         if (!sounds[0].isPlaying()) {
           sounds[0].loop();
@@ -43,6 +51,7 @@ function mousePressed() {
         }
         start = true;
         loop();
+        // Button 2 logic: toggle loop
       } else if (index == 2) {
         if (!sounds[1].isPlaying()) {
           sounds[1].loop();
@@ -51,10 +60,12 @@ function mousePressed() {
         }
         start = true;
         loop();
+        // Button 3 logic: one-shot play
       } else if (index == 3) {
         sounds[2].play();
         start = true;
         loop();
+        // Button 4 logic: toggle loop
       } else if (index == 4) {
         if (!sounds[3].isPlaying()) {
           sounds[3].loop();
@@ -63,6 +74,7 @@ function mousePressed() {
         }
         start = true;
         loop();
+        // Button 5 logic: one-shot play
       } else if (index == 5) {
         sounds[4].play();
         start = true;
@@ -88,19 +100,24 @@ function setup() {
   resizeCanvas(windowWidth, windowHeight);
   calculateImageDrawProps();
 
+  // Initialise the FFT with smoothing value 0.3
   fft = new p5.FFT(0.3);
 }
 
 function draw() {
   background(37, 84, 125);
+  // Analyse current audio frequency spectrum
   fft.analyze();
 
   translate(offsetX, offsetY);
   scale(scaleFactor);
 
+  // Display each wheel
   wheels.forEach((w) => w.displayWheel());
+  // Draw bead chain around wheels
   drawTightChain();
 
+  // Stop animation loop if not started
   if (!start) {
     noLoop();
   }
@@ -111,6 +128,7 @@ function windowResized() {
   calculateImageDrawProps();
 }
 
+// Calculate scaling and centering for responsive layout
 function calculateImageDrawProps() {
   scaleFactor = min(width, height) / BASE_CANVAS_SIZE;
 
@@ -118,6 +136,7 @@ function calculateImageDrawProps() {
   offsetY = (height - BASE_CANVAS_SIZE * scaleFactor) / 2;
 }
 
+// Convert mouseX/Y from screen to logical canvas coordinates
 function getMousePosition() {
   return {
     x: (mouseX - offsetX) / scaleFactor,
@@ -125,6 +144,7 @@ function getMousePosition() {
   }
 }
 
+// Build all wheels and prepare for chain generation
 function buildWheelsAndResolveChain() {
   wheels.push(new Wheel(113, 104, {
     variantCircle: "B", curved: true, curvedAngle: PI / 2,
@@ -386,19 +406,23 @@ class Wheel {
     translate(this.x, this.y);
     rotate(this.rot);
 
+    // Adjust rotation speed and scaling ratio based on audio spectrum
     let _amp = fft.getEnergy(20, 200);
     let speedOffset = map(_amp, 200, 250, 0, 0.05);
     if (sounds[3].isPlaying()) {
       speedOffset = map(_amp, 230, 240, 0, 0.05);
     }
     let scaleOffset = 0;
+    // When the animation type is rotation, adjust the rotation speed based on the audio spectrum
     if (this.options.aniType == "rotate") {
       this.rot += this.options.rotateSpeed * speedOffset;
     } else {
+      // When the animation type is scaled, adjust the scaling ratio based on the audio spectrum
       let soundIndex = this.options.soundIndex;
       if (sounds[soundIndex].isPlaying()) {
         scaleOffset = map(_amp, 200, 250, -0.1, 0.1);
         if (sounds[3].isPlaying()) {
+          // When playing the fourth piece of music, adjust the scaling ratio based on the audio spectrum
           scaleOffset = map(_amp, 230, 240, -0.1, 0.1);
         }
       }
@@ -532,7 +556,7 @@ function drawTightChain() {
         let size = dist(x1, y1, x2, y2);
         translate(cx, cy);
         rotate(atan2(y2 - y1, x2 - x1));
-        if (i % 6 != 0) {
+        if (i % 6 != 0) { 
           stroke(255, 255, 255, 180);
           fill(colors[i % colors.length]);
           ellipse(0, 0, size, min(size / 2, 12) + offsetSize);
@@ -564,7 +588,7 @@ function drawTightChain() {
         let size = dist(x1, y1, x2, y2);
         translate(cx, cy);
         rotate(atan2(y2 - y1, x2 - x1));
-        if (i % 6 === 0) {  
+        if (i % 6 === 0) {  //Black and white beads
           fill(0);
           ellipse(0, 0, size, min(BEAD_W * 0.75, 12) + offsetSize);
           fill(255);
